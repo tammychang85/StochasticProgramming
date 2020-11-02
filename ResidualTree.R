@@ -59,7 +59,56 @@ getRealizationR = function(realization.size){
   return(list(frame=realization.df, matrix=realization.matrix))
 }
 
+# using all the features to estimate for each period
 getEstimatedDemands = function(X0, similar.product.datas, time.period=4){
+  
+  new.product.demands = list()
+  
+  ## perform least-squares regression on available data on the n historical demands of similar products
+  # period 1
+  lm.1 = lm(similar.product.datas[, 1]~x1+x2+x3+x4, similar.product.datas)
+  estimated.d01 = predict(lm.1, X0) + lm.1$residual
+  estimated.d01[which(estimated.d01 < 0)] = 0
+  new.product.demands = append(new.product.demands, list(estimated.d01))
+  
+  # period 2
+  lm.2 = lm(similar.product.datas[, 2]~x1+x2+x3+x4+d1, similar.product.datas)
+  estimated.d02 = c()
+  for (d in estimated.d01){
+    X0.t = cbind(X0, d1=d)
+    estimated.d02 = c(estimated.d02, predict(lm.2, X0.t))
+  }
+  estimated.d02 = estimated.d02 + lm.2$residual
+  estimated.d02[which(estimated.d02 < 0)] = 0
+  new.product.demands = append(new.product.demands, list(estimated.d02))
+  
+  # period 3
+  lm.3 = lm(similar.product.datas[, 3]~x1+x2+x3+x4+d1+d2, similar.product.datas)
+  estimated.d03 = c()
+  for (i in seq_along(estimated.d02)){
+    X0.t = cbind(X0, d1=estimated.d01[i], d2=estimated.d02[i])
+    estimated.d03 = c(estimated.d03, predict(lm.3, X0.t))
+  }
+  estimated.d03 = estimated.d03 + lm.3$residual
+  estimated.d03[which(estimated.d03 < 0)] = 0
+  new.product.demands = append(new.product.demands, list(estimated.d03))
+  
+  # period 4
+  lm.4 = lm(similar.product.datas[, 4]~x1+x2+x3+x4+d1+d2+d3, similar.product.datas)
+  estimated.d04 = c()
+  for (i in seq_along(estimated.d03)){
+    X0.t = cbind(X0, d1=estimated.d01[i], d2=estimated.d02[i], d3=estimated.d03[i])
+    estimated.d04 = c(estimated.d04, predict(lm.4, X0.t))
+  }
+  estimated.d04 = estimated.d04 + lm.4$residual
+  estimated.d04[which(estimated.d04 < 0)] = 0
+  new.product.demands = append(new.product.demands, list(estimated.d04))
+  
+  return(new.product.demands)
+}
+
+# knowming  exactly what features to use for each period
+getEstimatedDemands2 = function(X0, similar.product.datas, time.period=4){
   
   new.product.demands = list()
   
@@ -106,14 +155,21 @@ getEstimatedDemands = function(X0, similar.product.datas, time.period=4){
   return(new.product.demands)
 }
 
-binDemands = function(demands, bin.num, realization.size){
-  
+binDemands = function(demands, bin.num, realization.size, test=0){
+
   # bin demands into bin.num bins for each period
   binned.demands = list()
   binned.demands.probs = list()
+  
+  # if (test){
+  #   x11(width=70,height=30)
+  #   par(mfrow=c(2,2))
+  # }
+  
+  period = 1
   for (d in demands){
     demand.dt = data.frame(demand=d)
-    bin.groups =  rbin_equal_length(demand.dt, demand, demand, bin.num)
+    bin.groups = rbin_equal_length(demand.dt, demand, demand, bin.num)
     breaks = bin.groups$lower_cut[1]
     breaks = c(breaks, bin.groups$upper_cut)
     bins = cut(d, breaks, right = F)
@@ -122,6 +178,11 @@ binDemands = function(demands, bin.num, realization.size){
     
     bins.count = table(bins)
     binned.demands.probs = append(binned.demands.probs, list(as.vector(table(bins)) / realization.size))
+    if (test){
+      barplot(bins.count, names.arg=lapply(bins.median, round), main=paste0('period', period)) 
+      period = period + 1
+    }
+    
   }
   
   return(list(values=binned.demands, probs=binned.demands.probs))
@@ -131,12 +192,10 @@ getResidualTree = function(realizations, bin.num, realization.size) {
   
   features.x0 = getFeatures()
   demands.x0 = getEstimatedDemands(features.x0, realizations$frame)
-  
   bin.Demands = binDemands(demands.x0, bin.num, realization.size)
   
   demands = bin.Demands$values
   probabilities = bin.Demands$probs
-  print(probabilities)
   
   realization.size = length(demands[[1]])
   paths.df = data.frame()
@@ -190,7 +249,22 @@ getResidualTree = function(realizations, bin.num, realization.size) {
 
 
 # ---- start ----
-realization.size = 10
+realization.size = 50
 realizations = getRealizationR(realization.size)
 bin.num = 3
 residualtree = getResidualTree(realizations, bin.num, realization.size)
+
+# visulaize bins
+x11(width=70,height=30)
+par(mfrow=c(2,2))
+features.x0 = getFeatures()
+demands.x0 = getEstimatedDemands(features.x0, realizations$frame)
+bin.Demands = binDemands(demands.x0, 5, realization.size, 1)
+
+x11(width=70,height=30)
+par(mfrow=c(2,2))
+period = 1
+for (demand in demands.x0){
+  hist(demand, main = paste0('period', period), breaks = 10)
+  period = period + 1
+}
