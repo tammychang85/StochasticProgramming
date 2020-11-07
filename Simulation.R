@@ -792,14 +792,12 @@ getTestResults = function(tree, testingDataSet, node.per.period, cost.structure,
   return(results)
 }
 
-
 # ---- main ----
 
 ## simply test the functions
-realization.size = 50
-testing.size = 200
-realizations = getRealizations(realization.size)
-testingDataSet = getRealizations(testing.size)$matrix
+# read the data
+realizations = readRDS('data/realizations.rds')
+testingDataSet = readRDS('data/testingDataSet.rds')
 
 st.node.test = c(1, 2, 4, 8, 8)
 st = getScenarioTree(st.node.test, realizations)
@@ -816,17 +814,14 @@ sum(rt.results[[1]])
 
 
 ## compare secnario and residual trees with diferents numbers of bin
-time = '1106'
-realization.size = 50
-testing.size = 200
-realizations = getRealizations(realization.size)
-testingDataSet = getRealizations(testing.size)$matrix
-saveRDS(realizations, 'data/realizations.rds')
-saveRDS(testingDataSet, 'data/testingDataSet.rds')
+# read the data
+realizations = readRDS('data/realizations.rds')
+testingDataSet = readRDS('data/testingDataSet.rds')
 
 # tree sturctures
 st.node = c(1, 2, 4, 8, 16)
-rt.node = c(1, 2, 4, 8, 16)
+rt2.node = c(1, 2, 4, 8, 16)
+rt4.node = c(1, 4, 16, 64, 256)
 
 # start
 rounds = 2
@@ -916,17 +911,17 @@ for (round in 1:rounds) {
   print(paste0('---round ', round, '---'))
   
   print('get residual tree, bin = 4')
-  rt = getResidualTree(realizations, 2, realization.size)
+  rt = getResidualTree(realizations, 4, realization.size)
   
   print('get results')
   for (i in seq_along(flexible.costs)) {
-    rt4.results.high.r = getTestResults(rt, testingDataSet, rt.node, high.cost.structure[[i]], mode=0)
+    rt4.results.high.r = getTestResults(rt, testingDataSet, rt4.node, high.cost.structure[[i]], mode=0)
     rt4.results.high.r = lapply(rt4.results.high.r, sum)
     for (j in seq_along(rt4.results.high.r)) {
       rt4.results.high[[i]][j] = rt4.results.high[[i]][j] + rt4.results.high.r[[j]]
     }
     
-    rt4.results.low.r = getTestResults(rt, testingDataSet, rt.node, low.cost.structure[[i]], mode=0)
+    rt4.results.low.r = getTestResults(rt, testingDataSet, rt4.node, low.cost.structure[[i]], mode=0)
     rt4.results.low.r = lapply(rt4.results.low.r, sum)
     for (j in seq_along(rt4.results.low.r)) {
       rt4.results.low[[i]][j] = rt4.results.low[[i]][j] + rt4.results.low.r[[j]]
@@ -942,4 +937,34 @@ for (round in 1:rounds) {
     saveRDS(rt4.results.low, 'results/rt4ResultsLow.rds')
   }   
 }
+
+# visulize the results
+ratio.st.rt2.high = c()
+ratio.st.rt2.low = c()
+ratio.st.rt4.high = c()
+ratio.st.rt4.low = c()
+for (i in seq_along(flexible.costs)) {
+  ratio.st.rt2.high =c(ratio.st.rt2.high, (st.results.high[[i]][1] / rt2.results.high[[i]][1]))
+  ratio.st.rt2.low =c(ratio.st.rt2.low, (st.results.low[[i]][1] / rt2.results.low[[i]][1]))
+  
+  ratio.st.rt4.high =c(ratio.st.rt4.high, (st.results.high[[i]][1] / rt4.results.high[[i]][1]))
+  ratio.st.rt4.low =c(ratio.st.rt4.low, (st.results.low[[i]][1] / rt4.results.low[[i]][1]))
+}
+
+x11(width=70,height=30)
+par(mfrow=c(1,2))
+plot(1:length(flexible.costs), ratio.st.rt2.high, type='b',lty=2, lwd=2, col='blue',
+     xlab='flexible cosst', ylab='cost ratio', xaxt='n', yaxt='n', ylim=c(0.5, 1.2), main='high penalty')
+axis(1, at=1:length(flexible.costs), labels=flexible.costs, legend())
+axis(2, at=seq(0.6, 1.2, 0.05))
+legend('bottomright', legend=c('st / rt (bin=2)', 'st / rt (bin=4)'), col=c('blue', 'red'), text.col=c('blue', 'red'), lty=2, lwd=2, cex = 0.85)
+lines(1:length(flexible.costs), ratio.st.rt4.high, type='b', lty=2, lwd=2, col='red')
+
+
+plot(1:length(flexible.costs), ratio.st.rt2.low, type='b',lty=2, lwd=2, col='blue',
+     xlab='flexible cosst', ylab='cost ratio', xaxt='n', yaxt='n', ylim=c(0.5, 1.2), main='low penalty')
+axis(1, at=1:length(flexible.costs), labels=flexible.costs)
+axis(2, at=seq(0.6, 1.2, 0.05))
+legend('bottomright', legend=c('st / rt (bin=2)', 'st / rt (bin=4)'), col=c('blue', 'red'), text.col=c('blue', 'red'), lty=2, lwd=2, cex = 0.85)
+lines(1:length(flexible.costs), ratio.st.rt4.low, type='b', lty=2, lwd=2, col='red')
 
