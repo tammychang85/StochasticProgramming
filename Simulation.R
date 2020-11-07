@@ -1,21 +1,12 @@
 # ---- packages ----
-library(caret)
-# used to build the scenario tree
-import::here(buildtree, .from = "BuildScenarioTree.R")
+# to bin the data
+library(rbin)
 # solver
 library(Rglpk)
 
 
 # ---- functions ----
-getFeatures = function(){
-  # static covariates
-  x1 = rbinom(1, 1, 0.25)
-  x2 = rbinom(1, 1, 0.5)
-  x3 = rnorm(1, 900, 200)
-  x4 = sample(seq(7.95, 22.95), 1)
-  
-  return(data.frame(x1, x2, x3, x4))
-}
+## generating demands
 simulateDemands = function(){
   
   # static covariates
@@ -61,42 +52,103 @@ getRealizations = function(realization.size){
   return(list(frame=realization.df, matrix=realization.matrix))
 }
 
-
-## for residual tree
+## residual tree
+getFeatures = function(){
+  # static covariates
+  x1 = rbinom(1, 1, 0.25)
+  x2 = rbinom(1, 1, 0.5)
+  x3 = rnorm(1, 900, 200)
+  x4 = sample(seq(7.95, 22.95), 1)
+  
+  return(data.frame(x1, x2, x3, x4))
+}
 getEstimatedDemands = function(X0, similar.product.datas, time.period=4){
   
-  # perform least-squares regression on available data on the n historical demands of similar products
   new.product.demands = list()
-  for (t in 1:time.period) {
-    lm.t = lm(similar.product.datas[, t]~x1+x2+x3+x4, similar.product.datas)
-    estimated.d0t = predict(lm.t, X0)
-    d0t = (estimated.d0t + lm.t$residual)
-    new.product.demands = append(new.product.demands, list(d0t))
+  
+  ## perform least-squares regression on available data on the n historical demands of similar products
+  # period 1
+  lm.1 = lm(d1~x1+x2+x3+x4, similar.product.datas)
+  estimated.d01 = predict(lm.1, X0) + lm.1$residual
+  estimated.d01[which(estimated.d01 < 0)] = 0
+  new.product.demands = append(new.product.demands, list(estimated.d01))
+  
+  # period 2
+  lm.2 = lm(d2~x1+x2+x3+x4+d1, similar.product.datas)
+  estimated.d02 = c()
+  for (d in estimated.d01){
+    X0.t = cbind(X0, d1=d)
+    estimated.d02 = c(estimated.d02, predict(lm.2, X0.t))
   }
+  estimated.d02 = estimated.d02 + lm.2$residual
+  estimated.d02[which(estimated.d02 < 0)] = 0
+  new.product.demands = append(new.product.demands, list(estimated.d02))
+  
+  # period 3
+  lm.3 = lm(d3~x1+x2+x3+x4+d1+d2, similar.product.datas)
+  estimated.d03 = c()
+  for (i in seq_along(estimated.d02)){
+    X0.t = cbind(X0, d1=estimated.d01[i], d2=estimated.d02[i])
+    estimated.d03 = c(estimated.d03, predict(lm.3, X0.t))
+  }
+  estimated.d03 = estimated.d03 + lm.3$residual
+  estimated.d03[which(estimated.d03 < 0)] = 0
+  new.product.demands = append(new.product.demands, list(estimated.d03))
+  
+  # period 4
+  lm.4 = lm(d4~x1+x2+x3+x4+d1+d2+d3, similar.product.datas)
+  estimated.d04 = c()
+  for (i in seq_along(estimated.d03)){
+    X0.t = cbind(X0, d1=estimated.d01[i], d2=estimated.d02[i], d3=estimated.d03[i])
+    estimated.d04 = c(estimated.d04, predict(lm.4, X0.t))
+  }
+  estimated.d04 = estimated.d04 + lm.4$residual
+  estimated.d04[which(estimated.d04 < 0)] = 0
+  new.product.demands = append(new.product.demands, list(estimated.d04))
   
   return(new.product.demands)
 }
-binDemands = function(demands, bin.num, realization.size){
+binDemands = function(demands, bin.num, realization.size, test=0){
   
   # bin demands into bin.num bins for each period
   binned.demands = list()
   binned.demands.probs = list()
-  for (t in seq_along(demands)){
-    # tbd
+  
+  # if (test){
+  #   x11(width=70,height=30)
+  #   par(mfrow=c(2,2))
+  # }
+  
+  period = 1
+  for (d in demands){
+    demand.dt = data.frame(demand=d)
+    bin.groups = rbin_equal_length(demand.dt, demand, demand, bin.num)
+    breaks = bin.groups$lower_cut[1]
+    breaks = c(breaks, bin.groups$upper_cut)
+    bins = cut(d, breaks, right = F)
+    bins.median = tapply(d, bins, median)
+    binned.demands = append(binned.demands, list(bins.median))
+    
+    bins.count = table(bins)
+    binned.demands.probs = append(binned.demands.probs, list(as.vector(table(bins)) / realization.size))
+    if (test){
+      barplot(bins.count, names.arg=lapply(bins.median, round), main=paste0('period', period)) 
+      period = period + 1
+    }
+    
   }
+  
   return(list(values=binned.demands, probs=binned.demands.probs))
 }
-getResidualTree = function(realizations, bin.num) {
+getResidualTree = function(realizations, bin.num, realization.size) {
   
-  # get features of new products
   features.x0 = getFeatures()
-  # get estimated demands of new products
   demands.x0 = getEstimatedDemands(features.x0, realizations$frame)
-  # bin the demands into bin.num bins
   bin.Demands = binDemands(demands.x0, bin.num, realization.size)
   
   demands = bin.Demands$values
   probabilities = bin.Demands$probs
+  
   realization.size = length(demands[[1]])
   paths.df = data.frame()
   probs.df = data.frame()
@@ -105,13 +157,13 @@ getResidualTree = function(realizations, bin.num) {
       for (j in seq_along(demands[[i]])) {
         curret.demand = demands[[i]][j]
         next.demand = demands[[i + 1]]
-        path.i = data.frame(curret.demand, next.demand)
+        path.i = data.frame(curret.demand, next.demand, row.names=NULL)
         paths.df = rbind(paths.df, path.i)
         
         curret.prob = probabilities[[i]][j]
         next.prob = probabilities[[i + 1]]
-        prob.i = data.frame(curret.prob, next.prob)
-        probs.df = rbind(probs.df, prob.i) 
+        prob.i = data.frame(curret.prob, next.prob, row.names=NULL)
+        probs.df = rbind(probs.df, prob.i)
       }
       paths.df = apply(paths.df, 1, toString)
       probs.df = apply(probs.df, 1, toString)
@@ -122,12 +174,12 @@ getResidualTree = function(realizations, bin.num) {
       for (j in seq_along(paths.df)) {
         curret.period = rep(paths.df[j], realization.size)
         next.period = demands[[i + 1]]
-        path.i = data.frame(curret.period, next.period)
+        path.i = data.frame(curret.period, next.period, row.names=NULL)
         current.paths = rbind(current.paths, path.i)
         
         curret.prob = rep(probs.df[j], realization.size)
         next.prob = probabilities[[i + 1]]
-        prob.i = data.frame(curret.prob, next.prob)
+        prob.i = data.frame(curret.prob, next.prob, row.names=NULL)
         current.probs = rbind(current.probs, prob.i) 
       }
       paths.df = apply(current.paths, 1, toString)
@@ -148,7 +200,7 @@ getResidualTree = function(realizations, bin.num) {
 }
 
 
-## for scenario tree
+## scenario tree
 # receive a vector of nodal structure and return a matrix of tree structure
 getTreeStructure = function(node.per.period){
   # how many period does a scenario tree have
@@ -166,16 +218,18 @@ getTreeStructure = function(node.per.period){
   
   return(matrix(tree.structure, nrow=tree.length, byrow=TRUE))
 }
+# to build the scenario tree
+import::here(buildtree, .from = "BuildScenarioTree.R")
 # use modified function of scenario package, able to build tree with only one scenario
 getScenarioTree = function(node.per.period, realizations, maxIteration=40000){
   
   treeStructure = getTreeStructure(node.per.period)
   
-  return(buildtree(realizations, treeStructure, jMax=maxIteration))
+  return(buildtree(realizations$matrix, treeStructure, jMax=maxIteration))
 }
 
 
-## for linear programming
+## inear programming
 getCostStructure = function(fixedCost=1, holdingCost=0.25, flexible.k=1.5, penalty.k=2){
   
   flexibleCost = fixedCost * flexible.k
@@ -444,7 +498,7 @@ optimize = function(scenario.tree, node.per.period, cost.structure, flexible=1, 
 }
 
 
-## for seeing and checking the optimization model 
+## seeing and checking the optimization model 
 getColumnName = function(period.num, scenario.num, flexible=1) {
   
   col.name = c()
@@ -561,7 +615,7 @@ checkRHS = function(RHS, constraints.matrix){
 }
 
 
-## for parsing optimizaton results
+## parsing optimizaton results
 # parse the solution form optimization model and return the order policy matrix
 getOrderPolicy = function(node.per.period, solutions, flexible=1) {
   
@@ -720,7 +774,7 @@ getAverageCost = function(scenario.tree, testingDataSet, cost.structure, policy)
   flexible.order = flexible.order / dim(testingDataSet)[2]
   fixed.order = fixed.order / dim(testingDataSet)[2]
   
-  return(list(costs, flexible.order, fixed.order))
+  return(list(cost=costs, flexible.order=flexible.order, fixed.order=fixed.order))
 }
 
 
@@ -734,22 +788,158 @@ getTestResults = function(tree, testingDataSet, node.per.period, cost.structure,
   policy = getOrderPolicy(node.per.period, solutions, flexible)
   # results on testing datas
   results = getAverageCost(tree, testingDataSet, cost.structure, policy)
-  cost = results[1]
-  flexible.orders = results[2]
-  fixed.orders = results[3]
-  
-  return(c(cost, flexible.orders, fixed.orders))
+
+  return(results)
 }
 
 
 # ---- main ----
 
+## simply test the functions
 realization.size = 50
 testing.size = 200
-#
 realizations = getRealizations(realization.size)
 testingDataSet = getRealizations(testing.size)$matrix
 
-node = c(1, 2, 4, 8, 8)
-st = getScenarioTree(node, realizations$matrix)
+st.node.test = c(1, 2, 4, 8, 8)
+st = getScenarioTree(st.node.test, realizations)
+
+rt.node.test = c(1, 2, 4, 8, 16)
+bin.num = 2
+rt = getResidualTree(realizations, bin.num, realization.size)
+
+cost.structure = getCostStructure()
+st.results = getTestResults(st, testingDataSet, st.node.test, cost.structure, mode=1)
+rt.results = getTestResults(rt, testingDataSet, rt.node.test, cost.structure, mode=0)
+sum(st.results[[1]])
+sum(rt.results[[1]])
+
+
+## compare secnario and residual trees with diferents numbers of bin
+time = '1106'
+realization.size = 50
+testing.size = 200
+realizations = getRealizations(realization.size)
+testingDataSet = getRealizations(testing.size)$matrix
+saveRDS(realizations, 'data/realizations.rds')
+saveRDS(testingDataSet, 'data/testingDataSet.rds')
+
+# tree sturctures
+st.node = c(1, 2, 4, 8, 16)
+rt.node = c(1, 2, 4, 8, 16)
+
+# start
+rounds = 2
+flexible.costs = c(1.5, 3, 6)
+high.cost.structure = rep(list(0), length(flexible.costs)) # cost structure with high peanlty
+low.cost.structure = rep(list(0), length(flexible.costs)) # cost structure with low peanlty
+for (i in seq_along(flexible.costs)) {
+  high.cost.structure[[i]] = getCostStructure(flexible.k=flexible.costs[i], penalty.k=4.5)
+  low.cost.structure[[i]] = getCostStructure(flexible.k=flexible.costs[i], penalty.k=1.5)
+}
+
+# scenario tree
+st.results.high = rep(list(rep(0, 3)), 3)
+st.results.low = rep(list(rep(0, 3)), 3)
+for (round in 1:rounds) {
+  
+  print(paste0('---round ', round, '---'))
+  
+  print('get scenario tree')
+  st = getScenarioTree(st.node, realizations)
+
+  print('get results')
+  for (i in seq_along(flexible.costs)) {
+    st.results.high.r = getTestResults(st, testingDataSet, st.node, high.cost.structure[[i]], mode=1)
+    st.results.high.r = lapply(st.results.high.r, sum)
+    for (j in seq_along(st.results.high.r)) {
+      st.results.high[[i]][j] = st.results.high[[i]][j] + st.results.high.r[[j]]
+    }
+    
+    st.results.low.r = getTestResults(st, testingDataSet, st.node, low.cost.structure[[i]], mode=1)
+    st.results.low.r = lapply(st.results.low.r, sum)
+    for (j in seq_along(st.results.low.r)) {
+      st.results.low[[i]][j] = st.results.low[[i]][j] + st.results.low.r[[j]]
+    }
+  }
+  
+  if (round == rounds){
+    print('avearge results')
+    st.results.high = lapply(st.results.high, function(x){x / rounds})
+    st.results.low = lapply(st.results.low, function(x){x / rounds})
+    
+    saveRDS(st.results.high, 'results/stResultsHigh.rds')
+    saveRDS(st.results.low, 'results/stResultsLow.rds')
+  }  
+}
+
+# residual tree, bin = 2
+rt2.results.high = rep(list(rep(0, 3)), 3)
+rt2.results.low = rep(list(rep(0, 3)), 3)
+for (round in 1:rounds) {
+  
+  print(paste0('---round ', round, '---'))
+  
+  print('get residual tree, bin = 2')
+  rt = getResidualTree(realizations, 2, realization.size)
+  
+  print('get results')
+  for (i in seq_along(flexible.costs)) {
+    rt2.results.high.r = getTestResults(rt, testingDataSet, rt.node, high.cost.structure[[i]], mode=0)
+    rt2.results.high.r = lapply(rt2.results.high.r, sum)
+    for (j in seq_along(rt2.results.high.r)) {
+      rt2.results.high[[i]][j] = rt2.results.high[[i]][j] + rt2.results.high.r[[j]]
+    }
+    
+    rt2.results.low.r = getTestResults(rt, testingDataSet, rt.node, low.cost.structure[[i]], mode=0)
+    rt2.results.low.r = lapply(rt2.results.low.r, sum)
+    for (j in seq_along(rt2.results.low.r)) {
+      rt2.results.low[[i]][j] = rt2.results.low[[i]][j] + rt2.results.low.r[[j]]
+    }
+  }
+  
+  if (round == rounds){
+    print('avearge results')
+    rt2.results.high = lapply(rt2.results.high, function(x){x / rounds})
+    rt2.results.low = lapply(rt2.results.low, function(x){x / rounds})
+    
+    saveRDS(rt2.results.high, 'results/rt2ResultsHigh.rds')
+    saveRDS(rt2.results.low, 'results/rt2ResultsLow.rds')
+  }   
+}
+
+# residual tree, bin = 4
+rt4.results.high = rep(list(rep(0, 3)), 3)
+rt4.results.low = rep(list(rep(0, 3)), 3)
+for (round in 1:rounds) {
+  
+  print(paste0('---round ', round, '---'))
+  
+  print('get residual tree, bin = 4')
+  rt = getResidualTree(realizations, 2, realization.size)
+  
+  print('get results')
+  for (i in seq_along(flexible.costs)) {
+    rt4.results.high.r = getTestResults(rt, testingDataSet, rt.node, high.cost.structure[[i]], mode=0)
+    rt4.results.high.r = lapply(rt4.results.high.r, sum)
+    for (j in seq_along(rt4.results.high.r)) {
+      rt4.results.high[[i]][j] = rt4.results.high[[i]][j] + rt4.results.high.r[[j]]
+    }
+    
+    rt4.results.low.r = getTestResults(rt, testingDataSet, rt.node, low.cost.structure[[i]], mode=0)
+    rt4.results.low.r = lapply(rt4.results.low.r, sum)
+    for (j in seq_along(rt4.results.low.r)) {
+      rt4.results.low[[i]][j] = rt4.results.low[[i]][j] + rt4.results.low.r[[j]]
+    }
+  }
+  
+  if (round == rounds){
+    print('avearge results')
+    rt4.results.high = lapply(rt4.results.high, function(x){x / rounds})
+    rt4.results.low = lapply(rt4.results.low, function(x){x / rounds})
+    
+    saveRDS(rt4.results.high, 'results/rt4ResultsHigh.rds')
+    saveRDS(rt4.results.low, 'results/rt4ResultsLow.rds')
+  }   
+}
 

@@ -11,7 +11,6 @@ getFeatures = function(){
   
   return(data.frame(x1, x2, x3, x4))
 }
-
 simulateDemands = function(){
   
   # static covariates
@@ -44,7 +43,6 @@ simulateDemands = function(){
   
   return(data.frame(d1, d2, d3, d4, x1, x2, x3, x4))
 }
-
 getRealizationR = function(realization.size){
   
   realization.df = data.frame()
@@ -58,7 +56,6 @@ getRealizationR = function(realization.size){
   
   return(list(frame=realization.df, matrix=realization.matrix))
 }
-
 # using all the features to estimate for each period
 getEstimatedDemands = function(X0, similar.product.datas, time.period=4){
   
@@ -66,13 +63,13 @@ getEstimatedDemands = function(X0, similar.product.datas, time.period=4){
   
   ## perform least-squares regression on available data on the n historical demands of similar products
   # period 1
-  lm.1 = lm(similar.product.datas[, 1]~x1+x2+x3+x4, similar.product.datas)
+  lm.1 = lm(d1~x1+x2+x3+x4, similar.product.datas)
   estimated.d01 = predict(lm.1, X0) + lm.1$residual
   estimated.d01[which(estimated.d01 < 0)] = 0
   new.product.demands = append(new.product.demands, list(estimated.d01))
   
   # period 2
-  lm.2 = lm(similar.product.datas[, 2]~x1+x2+x3+x4+d1, similar.product.datas)
+  lm.2 = lm(d2~x1+x2+x3+x4+d1, similar.product.datas)
   estimated.d02 = c()
   for (d in estimated.d01){
     X0.t = cbind(X0, d1=d)
@@ -83,7 +80,7 @@ getEstimatedDemands = function(X0, similar.product.datas, time.period=4){
   new.product.demands = append(new.product.demands, list(estimated.d02))
   
   # period 3
-  lm.3 = lm(similar.product.datas[, 3]~x1+x2+x3+x4+d1+d2, similar.product.datas)
+  lm.3 = lm(d3~x1+x2+x3+x4+d1+d2, similar.product.datas)
   estimated.d03 = c()
   for (i in seq_along(estimated.d02)){
     X0.t = cbind(X0, d1=estimated.d01[i], d2=estimated.d02[i])
@@ -94,7 +91,7 @@ getEstimatedDemands = function(X0, similar.product.datas, time.period=4){
   new.product.demands = append(new.product.demands, list(estimated.d03))
   
   # period 4
-  lm.4 = lm(similar.product.datas[, 4]~x1+x2+x3+x4+d1+d2+d3, similar.product.datas)
+  lm.4 = lm(d4~x1+x2+x3+x4+d1+d2+d3, similar.product.datas)
   estimated.d04 = c()
   for (i in seq_along(estimated.d03)){
     X0.t = cbind(X0, d1=estimated.d01[i], d2=estimated.d02[i], d3=estimated.d03[i])
@@ -106,7 +103,6 @@ getEstimatedDemands = function(X0, similar.product.datas, time.period=4){
   
   return(new.product.demands)
 }
-
 # knowming  exactly what features to use for each period
 getEstimatedDemands2 = function(X0, similar.product.datas, time.period=4){
   
@@ -154,7 +150,6 @@ getEstimatedDemands2 = function(X0, similar.product.datas, time.period=4){
   
   return(new.product.demands)
 }
-
 binDemands = function(demands, bin.num, realization.size, test=0){
 
   # bin demands into bin.num bins for each period
@@ -187,7 +182,6 @@ binDemands = function(demands, bin.num, realization.size, test=0){
   
   return(list(values=binned.demands, probs=binned.demands.probs))
 }
-
 getResidualTree = function(realizations, bin.num, realization.size) {
   
   features.x0 = getFeatures()
@@ -268,3 +262,23 @@ for (demand in demands.x0){
   hist(demand, main = paste0('period', period), breaks = 10)
   period = period + 1
 }
+
+demand.dt = data.frame(demand=demands.x0[[1]])
+for (i in 2:7){
+  bin.groups = rbin_equal_length(demand.dt, demand, demand, i)
+  print(bin.groups)
+  breaks = bin.groups$lower_cut[1]
+  breaks = c(breaks, bin.groups$upper_cut)
+  bins = cut(demands.x0[[1]], breaks, right = F)
+  for (l in levels(bins)){
+    print(length(bins[bins == l]))
+  }
+  print('-----')
+}
+
+set.seed(18)
+realizations = getRealizationR(realization.size)
+demands.x0.1 = getEstimatedDemands(features.x0, realizations$frame)
+demands.x0.2 = getEstimatedDemands1(features.x0, realizations$frame)
+demands.x0.1[[1]][1:3]
+demands.x0.2[[1]][1:3]
