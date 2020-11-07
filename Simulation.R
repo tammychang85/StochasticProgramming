@@ -951,16 +951,16 @@ for (i in seq_along(flexible.costs)) {
   ratio.st.rt4.low =c(ratio.st.rt4.low, (st.results.low[[i]][1] / rt4.results.low[[i]][1]))
 }
 
-png('graphs/AllFeatures.png')
-x11(width=70,height=30)
-par(mfrow=c(1,2))
+png('graphs/AllFeaturesHigh.png')
 plot(1:length(flexible.costs), ratio.st.rt2.high, type='b',lty=2, lwd=2, col='blue',
      xlab='flexible cosst', ylab='cost ratio', xaxt='n', yaxt='n', ylim=c(0.5, 1.2), main='high penalty')
-axis(1, at=1:length(flexible.costs), labels=flexible.costs, legend())
+axis(1, at=1:length(flexible.costs), labels=flexible.costs)
 axis(2, at=seq(0.6, 1.2, 0.05))
 legend('bottomright', legend=c('st / rt (bin=2)', 'st / rt (bin=4)'), col=c('blue', 'red'), text.col=c('blue', 'red'), lty=2, lwd=2, cex = 0.85)
 lines(1:length(flexible.costs), ratio.st.rt4.high, type='b', lty=2, lwd=2, col='red')
+dev.off()
 
+png('graphs/AllFeaturesLow.png')
 plot(1:length(flexible.costs), ratio.st.rt2.low, type='b',lty=2, lwd=2, col='blue',
      xlab='flexible cosst', ylab='cost ratio', xaxt='n', yaxt='n', ylim=c(0.5, 1.2), main='low penalty')
 axis(1, at=1:length(flexible.costs), labels=flexible.costs)
