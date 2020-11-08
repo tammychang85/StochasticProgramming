@@ -229,7 +229,7 @@ getScenarioTree = function(node.per.period, realizations, maxIteration=40000){
 }
 
 
-## inear programming
+## linear programming
 getCostStructure = function(fixedCost=1, holdingCost=0.25, flexible.k=1.5, penalty.k=2){
   
   flexibleCost = fixedCost * flexible.k
@@ -468,7 +468,7 @@ getConstraintsMatrix = function(obj, node.per.period, flexible=1, mode=1) {
   return(matrix(constraints, ncol=coefficient.num, byrow=TRUE))
 }
 # return the right hand side of the constraints
-getRHS = function(constraints.matrix, node.per.period, scenario.tree) {
+getRHS = function(constraints.matrix, node.per.period, tree) {
   
   # how many scenarios does a scenario tree have
   scenario.num = node.per.period[length(node.per.period)]
@@ -477,21 +477,21 @@ getRHS = function(constraints.matrix, node.per.period, scenario.tree) {
   # the right hand side of constraints for suppliers
   rhs = rep(0, (dim(constraints.matrix)[1]) - (scenario.num * period.num))
   for(i in 1:period.num){
-    rhs = c(rhs, scenario.tree$tree_values[(i + 1), ])
+    rhs = c(rhs, tree$tree_values[(i + 1), ])
   }
   
   return(rhs)
 }
 # optimize and return the results for scenario tree
-optimize = function(scenario.tree, node.per.period, cost.structure, flexible=1, mode=1){
+optimize = function(tree, node.per.period, cost.structure, flexible=1, mode=1){
   # obejct function for optimization
-  obj = getObjFunction(scenario.tree$branch_probabilities, node.per.period, cost.structure, flexible)
+  obj = getObjFunction(tree$branch_probabilities, node.per.period, cost.structure, flexible)
   # constraints matrix for optimization
-  constraints.matrix = constraints.matrix = getConstraintsMatrix(obj, node.per.period, flexible, mode)
+  constraints.matrix = getConstraintsMatrix(obj, node.per.period, flexible, mode)
   # directions of the constraints
   dir = rep('==' ,dim(constraints.matrix)[1])
   # the right hand side of the constraints
-  rhs = getRHS(constraints.matrix, node.per.period, scenario.tree)
+  rhs = getRHS(constraints.matrix, node.per.period, tree)
   
   # optimize and return
   return(Rglpk_solve_LP(obj, constraints.matrix, dir, rhs, max=FALSE))
@@ -668,10 +668,10 @@ getOrderPolicy = function(node.per.period, solutions, flexible=1) {
   return(final.policy)
 }
 # decide which flexible options to apply in each perid for a given scenario and return the policy matrix
-decideFlexiblePolicy = function(scenario.tree, testingData, policy) {
+decideFlexiblePolicy = function(tree, testingData, policy) {
   # record the decision to the final strategy for each period
-  scenario.num = dim(scenario.tree$tree_values)[2]
-  possible.scenarios = scenario.tree$tree_values[-length(testingData), , drop=F]
+  scenario.num = dim(tree$tree_values)[2]
+  possible.scenarios = tree$tree_values[-length(testingData), , drop=F]
   possible.flexible.policy = policy[,-dim(policy)[2], drop=F]
   
   # decide decison for each period of the scenario
@@ -707,10 +707,10 @@ decideFlexiblePolicy = function(scenario.tree, testingData, policy) {
 
 ## for costs
 # calculate cost for a given testing scneario
-getCost = function(scenario.tree, testingData, cost.structure, policy) {
+getCost = function(tree, testingData, cost.structure, policy) {
   #
   fixed.policy = policy[, dim(policy)[2]]
-  flexible.policy = decideFlexiblePolicy(scenario.tree, testingData, policy)
+  flexible.policy = decideFlexiblePolicy(tree, testingData, policy)
   # record cost of each period
   costs = c()
   inventory = 0
@@ -756,7 +756,7 @@ getCost = function(scenario.tree, testingData, cost.structure, policy) {
   return(list(costs, flexible.policy, fixed.policy))
 }
 # calculate the average cost of a given set of testing scenarios
-getAverageCost = function(scenario.tree, testingDataSet, cost.structure, policy) {
+getAverageCost = function(tree, testingDataSet, cost.structure, policy) {
   # record costs for all testing data
   costs = rep(0, 4)
   flexible.order = rep(0, 4)
@@ -765,7 +765,7 @@ getAverageCost = function(scenario.tree, testingDataSet, cost.structure, policy)
   # get the total cost for all testing data
   for ( i in 1: (dim(testingDataSet)[2])){
     # get the cost of testing data i
-    result.i = getCost(scenario.tree, testingDataSet[, i], cost.structure, policy)
+    result.i = getCost(tree, testingDataSet[, i], cost.structure, policy)
     costs = costs + result.i[[1]]
     flexible.order = flexible.order + result.i[[2]]
     fixed.order = fixed.order + result.i[[3]]
@@ -792,6 +792,15 @@ getTestResults = function(tree, testingDataSet, node.per.period, cost.structure,
   return(results)
 }
 
+
+## time testing
+testScenarioTree = function(st.node, realizations, testingDataSet, cost.structure){
+  getTestResults(getScenarioTree(st.node, realizations), testingDataSet, st.node, cost.structure, mode=1)
+}
+testResisualTree = function(rt.node, bin.num, realizations, testingDataSet, cost.structure){
+  getTestResults(getResidualTree(realizations, bin.num, 50), testingDataSet, rt.node, cost.structure, mode=0)
+}
+
 # ---- main ----
 ## compare secnario and residual trees with diferents numbers of bin
 # read the data
@@ -805,7 +814,7 @@ rt4.node = c(1, 4, 16, 64, 256)
 rt5.node = c(1, 5, 25, 125, 625)
 
 # start
-rounds = 2
+rounds = 25
 flexible.costs = c(1.5, 3, 6)
 high.cost.structure = rep(list(0), length(flexible.costs)) # cost structure with high peanlty
 low.cost.structure = rep(list(0), length(flexible.costs)) # cost structure with low peanlty
@@ -923,12 +932,12 @@ for (round in 1:rounds) {
 rt5.results.high = rep(list(rep(0, 3)), 3)
 rt5.results.low = rep(list(rep(0, 3)), 3)
 for (round in 1:rounds) {
-  
+
   print(paste0('---round ', round, '---'))
-  
+
   print('get residual tree, bin = 5')
   rt = getResidualTree(realizations, 5, 50)
-  
+
   print('get results')
   for (i in seq_along(flexible.costs)) {
     rt5.results.high.r = getTestResults(rt, testingDataSet, rt5.node, high.cost.structure[[i]], mode=0)
@@ -936,22 +945,22 @@ for (round in 1:rounds) {
     for (j in seq_along(rt5.results.high.r)) {
       rt5.results.high[[i]][j] = rt5.results.high[[i]][j] + rt5.results.high.r[[j]]
     }
-    
+
     rt5.results.low.r = getTestResults(rt, testingDataSet, rt5.node, low.cost.structure[[i]], mode=0)
     rt5.results.low.r = lapply(rt5.results.low.r, sum)
     for (j in seq_along(rt5.results.low.r)) {
       rt5.results.low[[i]][j] = rt5.results.low[[i]][j] + rt5.results.low.r[[j]]
     }
   }
-  
+
   if (round == rounds){
     print('avearge results')
     rt5.results.high = lapply(rt5.results.high, function(x){x / rounds})
     rt5.results.low = lapply(rt5.results.low, function(x){x / rounds})
-    
+
     saveRDS(rt5.results.high, 'results/rt5ResultsHigh.rds')
     saveRDS(rt5.results.low, 'results/rt5ResultsLow.rds')
-  }   
+  }
 }
 
 # visualize the results
@@ -959,8 +968,8 @@ ratio.st.rt2.high = c()
 ratio.st.rt2.low = c()
 ratio.st.rt4.high = c()
 ratio.st.rt4.low = c()
-ratio.st.rt5.high = c()
-ratio.st.rt5.low = c()
+# ratio.st.rt5.high = c()
+# ratio.st.rt5.low = c()
 for (i in seq_along(flexible.costs)) {
   ratio.st.rt2.high =c(ratio.st.rt2.high, (st.results.high[[i]][1] / rt2.results.high[[i]][1]))
   ratio.st.rt2.low =c(ratio.st.rt2.low, (st.results.low[[i]][1] / rt2.results.low[[i]][1]))
@@ -968,8 +977,8 @@ for (i in seq_along(flexible.costs)) {
   ratio.st.rt4.high =c(ratio.st.rt4.high, (st.results.high[[i]][1] / rt4.results.high[[i]][1]))
   ratio.st.rt4.low =c(ratio.st.rt4.low, (st.results.low[[i]][1] / rt4.results.low[[i]][1]))
   
-  ratio.st.rt5.high =c(ratio.st.rt5.high, (st.results.high[[i]][1] / rt5.results.high[[i]][1]))
-  ratio.st.rt5.low =c(ratio.st.rt5.low, (st.results.low[[i]][1] / rt5.results.low[[i]][1]))
+  # ratio.st.rt5.high =c(ratio.st.rt5.high, (st.results.high[[i]][1] / rt5.results.high[[i]][1]))
+  # ratio.st.rt5.low =c(ratio.st.rt5.low, (st.results.low[[i]][1] / rt5.results.low[[i]][1]))
 }
 
 png('graphs/AllFeaturesHigh.png')
@@ -979,7 +988,7 @@ axis(1, at=1:length(flexible.costs), labels=flexible.costs)
 axis(2, at=seq(0.6, 1.2, 0.05))
 legend('bottomright', legend=c('st / rt (bin=2)', 'st / rt (bin=4)'), col=c('blue', 'red'), text.col=c('blue', 'red'), lty=2, lwd=2, cex = 0.85)
 lines(1:length(flexible.costs), ratio.st.rt4.high, type='b', lty=2, lwd=2, col='orange')
-lines(1:length(flexible.costs), ratio.st.rt5.high, type='b', lty=2, lwd=2, col='red')
+# lines(1:length(flexible.costs), ratio.st.rt5.high, type='b', lty=2, lwd=2, col='red')
 dev.off()
 
 png('graphs/AllFeaturesLow.png')
@@ -989,5 +998,5 @@ axis(1, at=1:length(flexible.costs), labels=flexible.costs)
 axis(2, at=seq(0.6, 1.2, 0.05))
 legend('bottomright', legend=c('st / rt (bin=2)', 'st / rt (bin=4)'), col=c('blue', 'red'), text.col=c('blue', 'red'), lty=2, lwd=2, cex = 0.85)
 lines(1:length(flexible.costs), ratio.st.rt4.low, type='b', lty=2, lwd=2, col='orange')
-lines(1:length(flexible.costs), ratio.st.rt5.low, type='b', lty=2, lwd=2, col='red')
+# lines(1:length(flexible.costs), ratio.st.rt5.low, type='b', lty=2, lwd=2, col='red')
 dev.off()
