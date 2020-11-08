@@ -793,26 +793,6 @@ getTestResults = function(tree, testingDataSet, node.per.period, cost.structure,
 }
 
 # ---- main ----
-
-## simply test the functions
-# read the data
-realizations = readRDS('data/realizations.rds')
-testingDataSet = readRDS('data/testingDataSet.rds')
-
-st.node.test = c(1, 2, 4, 8, 8)
-st = getScenarioTree(st.node.test, realizations)
-
-rt.node.test = c(1, 2, 4, 8, 16)
-bin.num = 2
-rt = getResidualTree(realizations, bin.num, realization.size)
-
-cost.structure = getCostStructure()
-st.results = getTestResults(st, testingDataSet, st.node.test, cost.structure, mode=1)
-rt.results = getTestResults(rt, testingDataSet, rt.node.test, cost.structure, mode=0)
-sum(st.results[[1]])
-sum(rt.results[[1]])
-
-
 ## compare secnario and residual trees with diferents numbers of bin
 # read the data
 realizations = readRDS('data/realizations.rds')
@@ -822,6 +802,7 @@ testingDataSet = readRDS('data/testingDataSet.rds')
 st.node = c(1, 2, 4, 8, 16)
 rt2.node = c(1, 2, 4, 8, 16)
 rt4.node = c(1, 4, 16, 64, 256)
+rt5.node = c(1, 5, 25, 125, 625)
 
 # start
 rounds = 2
@@ -938,17 +919,57 @@ for (round in 1:rounds) {
   }   
 }
 
-# visulize the results
+# residual tree, bin = 5
+rt5.results.high = rep(list(rep(0, 3)), 3)
+rt5.results.low = rep(list(rep(0, 3)), 3)
+for (round in 1:rounds) {
+  
+  print(paste0('---round ', round, '---'))
+  
+  print('get residual tree, bin = 5')
+  rt = getResidualTree(realizations, 5, 50)
+  
+  print('get results')
+  for (i in seq_along(flexible.costs)) {
+    rt5.results.high.r = getTestResults(rt, testingDataSet, rt5.node, high.cost.structure[[i]], mode=0)
+    rt5.results.high.r = lapply(rt5.results.high.r, sum)
+    for (j in seq_along(rt5.results.high.r)) {
+      rt5.results.high[[i]][j] = rt5.results.high[[i]][j] + rt5.results.high.r[[j]]
+    }
+    
+    rt5.results.low.r = getTestResults(rt, testingDataSet, rt5.node, low.cost.structure[[i]], mode=0)
+    rt5.results.low.r = lapply(rt5.results.low.r, sum)
+    for (j in seq_along(rt5.results.low.r)) {
+      rt5.results.low[[i]][j] = rt5.results.low[[i]][j] + rt5.results.low.r[[j]]
+    }
+  }
+  
+  if (round == rounds){
+    print('avearge results')
+    rt5.results.high = lapply(rt5.results.high, function(x){x / rounds})
+    rt5.results.low = lapply(rt5.results.low, function(x){x / rounds})
+    
+    saveRDS(rt5.results.high, 'results/rt5ResultsHigh.rds')
+    saveRDS(rt5.results.low, 'results/rt5ResultsLow.rds')
+  }   
+}
+
+# visualize the results
 ratio.st.rt2.high = c()
 ratio.st.rt2.low = c()
 ratio.st.rt4.high = c()
 ratio.st.rt4.low = c()
+ratio.st.rt5.high = c()
+ratio.st.rt5.low = c()
 for (i in seq_along(flexible.costs)) {
   ratio.st.rt2.high =c(ratio.st.rt2.high, (st.results.high[[i]][1] / rt2.results.high[[i]][1]))
   ratio.st.rt2.low =c(ratio.st.rt2.low, (st.results.low[[i]][1] / rt2.results.low[[i]][1]))
   
   ratio.st.rt4.high =c(ratio.st.rt4.high, (st.results.high[[i]][1] / rt4.results.high[[i]][1]))
   ratio.st.rt4.low =c(ratio.st.rt4.low, (st.results.low[[i]][1] / rt4.results.low[[i]][1]))
+  
+  ratio.st.rt5.high =c(ratio.st.rt5.high, (st.results.high[[i]][1] / rt5.results.high[[i]][1]))
+  ratio.st.rt5.low =c(ratio.st.rt5.low, (st.results.low[[i]][1] / rt5.results.low[[i]][1]))
 }
 
 png('graphs/AllFeaturesHigh.png')
@@ -957,7 +978,8 @@ plot(1:length(flexible.costs), ratio.st.rt2.high, type='b',lty=2, lwd=2, col='bl
 axis(1, at=1:length(flexible.costs), labels=flexible.costs)
 axis(2, at=seq(0.6, 1.2, 0.05))
 legend('bottomright', legend=c('st / rt (bin=2)', 'st / rt (bin=4)'), col=c('blue', 'red'), text.col=c('blue', 'red'), lty=2, lwd=2, cex = 0.85)
-lines(1:length(flexible.costs), ratio.st.rt4.high, type='b', lty=2, lwd=2, col='red')
+lines(1:length(flexible.costs), ratio.st.rt4.high, type='b', lty=2, lwd=2, col='orange')
+lines(1:length(flexible.costs), ratio.st.rt5.high, type='b', lty=2, lwd=2, col='red')
 dev.off()
 
 png('graphs/AllFeaturesLow.png')
@@ -966,5 +988,6 @@ plot(1:length(flexible.costs), ratio.st.rt2.low, type='b',lty=2, lwd=2, col='blu
 axis(1, at=1:length(flexible.costs), labels=flexible.costs)
 axis(2, at=seq(0.6, 1.2, 0.05))
 legend('bottomright', legend=c('st / rt (bin=2)', 'st / rt (bin=4)'), col=c('blue', 'red'), text.col=c('blue', 'red'), lty=2, lwd=2, cex = 0.85)
-lines(1:length(flexible.costs), ratio.st.rt4.low, type='b', lty=2, lwd=2, col='red')
+lines(1:length(flexible.costs), ratio.st.rt4.low, type='b', lty=2, lwd=2, col='orange')
+lines(1:length(flexible.costs), ratio.st.rt5.low, type='b', lty=2, lwd=2, col='red')
 dev.off()
