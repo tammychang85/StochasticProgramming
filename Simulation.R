@@ -801,8 +801,7 @@ testResisualTree = function(rt.node, bin.num, realizations, testingDataSet, cost
   getTestResults(getResidualTree(realizations, bin.num, 50), testingDataSet, rt.node, cost.structure, mode=0)
 }
 
-# ---- main ----
-## compare secnario and residual trees with diferents numbers of bin
+# ---- compare secnario and residual trees with diferents numbers of bin ----
 # read the data
 realizations = readRDS('data/realizations.rds')
 testingDataSet = readRDS('data/testingDataSet.rds')
@@ -814,7 +813,7 @@ rt4.node = c(1, 4, 16, 64, 256)
 rt5.node = c(1, 5, 25, 125, 625)
 
 # start
-rounds = 25
+rounds = 15
 flexible.costs = c(1.5, 3, 6)
 high.cost.structure = rep(list(0), length(flexible.costs)) # cost structure with high peanlty
 low.cost.structure = rep(list(0), length(flexible.costs)) # cost structure with low peanlty
@@ -853,8 +852,8 @@ for (round in 1:rounds) {
     st.results.high = lapply(st.results.high, function(x){x / rounds})
     st.results.low = lapply(st.results.low, function(x){x / rounds})
     
-    saveRDS(st.results.high, 'results/stResultsHigh.rds')
-    saveRDS(st.results.low, 'results/stResultsLow.rds')
+    saveRDS(st.results.high, 'results/stResultsHigh15.rds')
+    saveRDS(st.results.low, 'results/stResultsLow15.rds')
   }  
 }
 
@@ -888,8 +887,8 @@ for (round in 1:rounds) {
     rt2.results.high = lapply(rt2.results.high, function(x){x / rounds})
     rt2.results.low = lapply(rt2.results.low, function(x){x / rounds})
     
-    saveRDS(rt2.results.high, 'results/rt2ResultsHigh.rds')
-    saveRDS(rt2.results.low, 'results/rt2ResultsLow.rds')
+    saveRDS(rt2.results.high, 'results/rt2ResultsHigh15.rds')
+    saveRDS(rt2.results.low, 'results/rt2ResultsLow15.rds')
   }   
 }
 
@@ -923,8 +922,8 @@ for (round in 1:rounds) {
     rt4.results.high = lapply(rt4.results.high, function(x){x / rounds})
     rt4.results.low = lapply(rt4.results.low, function(x){x / rounds})
     
-    saveRDS(rt4.results.high, 'results/rt4ResultsHigh.rds')
-    saveRDS(rt4.results.low, 'results/rt4ResultsLow.rds')
+    saveRDS(rt4.results.high, 'results/rt4ResultsHigh15.rds')
+    saveRDS(rt4.results.low, 'results/rt4ResultsLow15.rds')
   }   
 }
 
@@ -981,14 +980,19 @@ for (i in seq_along(flexible.costs)) {
   # ratio.st.rt5.low =c(ratio.st.rt5.low, (st.results.low[[i]][1] / rt5.results.low[[i]][1]))
 }
 
+ratio.st.rt2.high = c()
+ratio.st.rt2.low = c()
+ratio.st.rt4.high = c()
+ratio.st.rt4.low = c()
+
 png('graphs/AllFeaturesHigh.png')
 plot(1:length(flexible.costs), ratio.st.rt2.high, type='b',lty=2, lwd=2, col='blue',
      xlab='flexible cosst', ylab='cost ratio', xaxt='n', yaxt='n', ylim=c(0.5, 1.2), main='high penalty')
 axis(1, at=1:length(flexible.costs), labels=flexible.costs)
 axis(2, at=seq(0.6, 1.2, 0.05))
-legend('bottomright', legend=c('st / rt (bin=2)', 'st / rt (bin=4)'), col=c('blue', 'red'), text.col=c('blue', 'red'), lty=2, lwd=2, cex = 0.85)
+legend('bottomright', legend=c('st / rt (bin=2)', 'st / rt (bin=4)'), col=c('blue', 'orange'), text.col=c('blue', 'orange'), lty=2, lwd=2, cex = 0.85)
 lines(1:length(flexible.costs), ratio.st.rt4.high, type='b', lty=2, lwd=2, col='orange')
-# lines(1:length(flexible.costs), ratio.st.rt5.high, type='b', lty=2, lwd=2, col='red')
+lines(1:length(flexible.costs), ratio.st.rt5.high, type='b', lty=2, lwd=2, col='red')
 dev.off()
 
 png('graphs/AllFeaturesLow.png')
@@ -996,7 +1000,530 @@ plot(1:length(flexible.costs), ratio.st.rt2.low, type='b',lty=2, lwd=2, col='blu
      xlab='flexible cosst', ylab='cost ratio', xaxt='n', yaxt='n', ylim=c(0.5, 1.2), main='low penalty')
 axis(1, at=1:length(flexible.costs), labels=flexible.costs)
 axis(2, at=seq(0.6, 1.2, 0.05))
-legend('bottomright', legend=c('st / rt (bin=2)', 'st / rt (bin=4)'), col=c('blue', 'red'), text.col=c('blue', 'red'), lty=2, lwd=2, cex = 0.85)
+legend('bottomright', legend=c('st / rt (bin=2)', 'st / rt (bin=4)'), col=c('blue', 'orange'), text.col=c('blue', 'orange'), lty=2, lwd=2, cex = 0.85)
 lines(1:length(flexible.costs), ratio.st.rt4.low, type='b', lty=2, lwd=2, col='orange')
-# lines(1:length(flexible.costs), ratio.st.rt5.low, type='b', lty=2, lwd=2, col='red')
+lines(1:length(flexible.costs), ratio.st.rt5.low, type='b', lty=2, lwd=2, col='red')
 dev.off()
+
+st.flex = c()
+rt2.flex = c()
+rt4.flex = c()
+for (i in 1:3) {
+  st.flex = c(st.flex, st.results.low[[i]][2])
+  rt2.flex = c(rt2.flex, rt2.results.low[[i]][2])
+  rt4.flex = c(rt4.flex, rt4.results.low[[i]][2])
+}
+plot(1:length(flexible.costs), st.flex, type='b',lty=2, lwd=2, col='blue',
+     xlab='flexible cosst', ylab='cost ratio', xaxt='n', main='high penalty')
+axis(1, at=1:length(flexible.costs), labels=flexible.costs)
+legend('bottomright', legend=c('st / rt (bin=2)', 'st / rt (bin=4)'), col=c('blue', 'orange'), text.col=c('blue', 'orange'), lty=2, lwd=2, cex = 0.85)
+lines(1:length(flexible.costs), rt2.flex, type='b', lty=2, lwd=2, col='orange')
+lines(1:length(flexible.costs), rt4.flex, type='b', lty=2, lwd=2, col='red')
+
+# ---- compare results with diferents numbers of features ----
+getEstimatedDemands1 = function(X0, similar.product.datas, time.period=4){
+  
+  new.product.demands = list()
+  
+  ## perform least-squares regression on available data on the n historical demands of similar products
+  # period 1
+  lm.1 = lm(d1~x1, similar.product.datas)
+  estimated.d01 = predict(lm.1, X0) + lm.1$residual
+  estimated.d01[which(estimated.d01 < 0)] = 0
+  new.product.demands = append(new.product.demands, list(estimated.d01))
+  
+  # period 2
+  lm.2 = lm(d2~x1, similar.product.datas)
+  estimated.d02 = predict(lm.2, X0) + lm.2$residual
+  estimated.d02[which(estimated.d02 < 0)] = 0
+  new.product.demands = append(new.product.demands, list(estimated.d02))
+  
+  # period 3
+  lm.3 = lm(d3~x1, similar.product.datas)
+  estimated.d03 = predict(lm.3, X0) + lm.3$residual
+  estimated.d03[which(estimated.d03 < 0)] = 0
+  new.product.demands = append(new.product.demands, list(estimated.d03))
+  
+  # period 4
+  lm.4 = lm(d4~x1, similar.product.datas)
+  estimated.d04 = predict(lm.4, X0) + lm.4$residual
+  estimated.d04[which(estimated.d04 < 0)] = 0
+  new.product.demands = append(new.product.demands, list(estimated.d04))
+
+  return(new.product.demands)
+}
+getEstimatedDemands2 = function(X0, similar.product.datas, time.period=4){
+  
+  new.product.demands = list()
+  
+  ## perform least-squares regression on available data on the n historical demands of similar products
+  # period 1
+  lm.1 = lm(d1~x1+x2, similar.product.datas)
+  estimated.d01 = predict(lm.1, X0) + lm.1$residual
+  estimated.d01[which(estimated.d01 < 0)] = 0
+  new.product.demands = append(new.product.demands, list(estimated.d01))
+  
+  # period 2
+  lm.2 = lm(d2~x1+x2, similar.product.datas)
+  estimated.d02 = predict(lm.2, X0) + lm.2$residual
+  estimated.d02[which(estimated.d02 < 0)] = 0
+  new.product.demands = append(new.product.demands, list(estimated.d02))
+  
+  # period 3
+  lm.3 = lm(d3~x1+x2, similar.product.datas)
+  estimated.d03 = predict(lm.3, X0) + lm.3$residual
+  estimated.d03[which(estimated.d03 < 0)] = 0
+  new.product.demands = append(new.product.demands, list(estimated.d03))
+  
+  # period 4
+  lm.4 = lm(d4~x1+x2, similar.product.datas)
+  estimated.d04 = predict(lm.4, X0) + lm.4$residual
+  estimated.d04[which(estimated.d04 < 0)] = 0
+  new.product.demands = append(new.product.demands, list(estimated.d04))
+
+  return(new.product.demands)
+}
+getEstimatedDemands3 = function(X0, similar.product.datas, time.period=4){
+  
+  new.product.demands = list()
+  
+  ## perform least-squares regression on available data on the n historical demands of similar products
+  # period 1
+  lm.1 = lm(d1~x1+x2+x3, similar.product.datas)
+  estimated.d01 = predict(lm.1, X0) + lm.1$residual
+  estimated.d01[which(estimated.d01 < 0)] = 0
+  new.product.demands = append(new.product.demands, list(estimated.d01))
+  
+  # period 2
+  lm.2 = lm(d2~x1+x2+x3, similar.product.datas)
+  estimated.d02 = predict(lm.2, X0) + lm.2$residual
+  estimated.d02[which(estimated.d02 < 0)] = 0
+  new.product.demands = append(new.product.demands, list(estimated.d02))
+  
+  # period 3
+  lm.3 = lm(d3~x1+x2+x3, similar.product.datas)
+  estimated.d03 = predict(lm.3, X0) + lm.3$residual
+  estimated.d03[which(estimated.d03 < 0)] = 0
+  new.product.demands = append(new.product.demands, list(estimated.d03))
+  
+  # period 4
+  lm.4 = lm(d4~x1+x2+x3, similar.product.datas)
+  estimated.d04 = predict(lm.4, X0) + lm.4$residual
+  estimated.d04[which(estimated.d04 < 0)] = 0
+  new.product.demands = append(new.product.demands, list(estimated.d04))
+
+  return(new.product.demands)
+}
+getEstimatedDemands4 = function(X0, similar.product.datas, time.period=4){
+  
+  new.product.demands = list()
+  
+  ## perform least-squares regression on available data on the n historical demands of similar products
+  # period 1
+  lm.1 = lm(d1~x1+x2+x3+x4, similar.product.datas)
+  estimated.d01 = predict(lm.1, X0) + lm.1$residual
+  estimated.d01[which(estimated.d01 < 0)] = 0
+  new.product.demands = append(new.product.demands, list(estimated.d01))
+  
+  # period 2
+  lm.2 = lm(d2~x1+x2+x3+x4, similar.product.datas)
+  estimated.d02 = predict(lm.2, X0) + lm.2$residual
+  estimated.d02[which(estimated.d02 < 0)] = 0
+  new.product.demands = append(new.product.demands, list(estimated.d02))
+  
+  # period 3
+  lm.3 = lm(d3~x1+x2+x3+x4, similar.product.datas)
+  estimated.d03 = predict(lm.3, X0) + lm.3$residual
+  estimated.d03[which(estimated.d03 < 0)] = 0
+  new.product.demands = append(new.product.demands, list(estimated.d03))
+  
+  # period 4
+  lm.4 = lm(d4~x1+x2+x3+x4, similar.product.datas)
+  estimated.d04 = predict(lm.4, X0) + lm.4$residual
+  estimated.d04[which(estimated.d04 < 0)] = 0
+  new.product.demands = append(new.product.demands, list(estimated.d04))
+
+  return(new.product.demands)
+}
+getResidualTree2 = function(realizations, bin.num, realization.size, mode=1) {
+  
+  features.x0 = getFeatures()
+  demands.x0 = NULL
+  if (mode == 1){
+    print('x=1')
+    demands.x0 = getEstimatedDemands1(features.x0, realizations$frame)
+  }
+  else if (mode == 2){
+    print('x=2')
+    demands.x0 = getEstimatedDemands2(features.x0, realizations$frame)
+  }
+  else if (mode == 3){
+    print('x=3')
+    demands.x0 = getEstimatedDemands3(features.x0, realizations$frame)
+  }
+  else{
+    print('x=4')
+    demands.x0 = getEstimatedDemands4(features.x0, realizations$frame)
+  }
+  
+  bin.Demands = binDemands(demands.x0, bin.num, realization.size)
+  
+  demands = bin.Demands$values
+  probabilities = bin.Demands$probs
+  
+  realization.size = length(demands[[1]])
+  paths.df = data.frame()
+  probs.df = data.frame()
+  for (i in (1:(length(demands) - 1))) {
+    if (i == 1){
+      for (j in seq_along(demands[[i]])) {
+        curret.demand = demands[[i]][j]
+        next.demand = demands[[i + 1]]
+        path.i = data.frame(curret.demand, next.demand, row.names=NULL)
+        paths.df = rbind(paths.df, path.i)
+        
+        curret.prob = probabilities[[i]][j]
+        next.prob = probabilities[[i + 1]]
+        prob.i = data.frame(curret.prob, next.prob, row.names=NULL)
+        probs.df = rbind(probs.df, prob.i)
+      }
+      paths.df = apply(paths.df, 1, toString)
+      probs.df = apply(probs.df, 1, toString)
+    }
+    else {
+      current.paths = data.frame()
+      current.probs = data.frame()
+      for (j in seq_along(paths.df)) {
+        curret.period = rep(paths.df[j], realization.size)
+        next.period = demands[[i + 1]]
+        path.i = data.frame(curret.period, next.period, row.names=NULL)
+        current.paths = rbind(current.paths, path.i)
+        
+        curret.prob = rep(probs.df[j], realization.size)
+        next.prob = probabilities[[i + 1]]
+        prob.i = data.frame(curret.prob, next.prob, row.names=NULL)
+        current.probs = rbind(current.probs, prob.i) 
+      }
+      paths.df = apply(current.paths, 1, toString)
+      probs.df = apply(current.probs, 1, toString)
+    }
+  }
+  
+  # convert the paths from string to float
+  tree_values = list()
+  branch_probabilities = c()
+  for (i in seq_along(paths.df)) {
+    tree_values = append(tree_values, list(c(0, as.double(strsplit(paths.df[i], ',')[[1]]))))
+    branch_probabilities = c(branch_probabilities, prod(as.double(strsplit(probs.df[i], ',')[[1]])))
+  }
+  tree_values = do.call(cbind, tree_values)
+  
+  return(list(tree_values=tree_values, branch_probabilities=branch_probabilities))
+}
+
+
+# read the data
+realizations = readRDS('data/realizations.rds')
+testingDataSet = readRDS('data/testingDataSet.rds')
+
+rt2.node = c(1, 2, 4, 8, 16)
+rt4.node = c(1, 4, 16, 64, 256)
+
+rounds = 3
+flexible.costs = c(1.5, 3, 6)
+high.cost.structure = rep(list(0), length(flexible.costs)) # cost structure with high peanlty
+low.cost.structure = rep(list(0), length(flexible.costs)) # cost structure with low peanlty
+for (i in seq_along(flexible.costs)) {
+  high.cost.structure[[i]] = getCostStructure(flexible.k=flexible.costs[i], penalty.k=4.5)
+  low.cost.structure[[i]] = getCostStructure(flexible.k=flexible.costs[i], penalty.k=1.5)
+}
+
+# residual tree, bin = 2, feature = 1, 2, 3, 4
+rt2.results.high.f1 = rep(list(rep(0, 3)), 3)
+rt2.results.low.f1 = rep(list(rep(0, 3)), 3)
+rt2.results.high.f2 = rep(list(rep(0, 3)), 3)
+rt2.results.low.f2 = rep(list(rep(0, 3)), 3)
+rt2.results.high.f3 = rep(list(rep(0, 3)), 3)
+rt2.results.low.f3 = rep(list(rep(0, 3)), 3)
+rt2.results.high.f4 = rep(list(rep(0, 3)), 3)
+rt2.results.low.f4 = rep(list(rep(0, 3)), 3)
+for (round in 1:rounds) {
+  
+  print(paste0('---round ', round, '---'))
+  
+  print('get residual tree, bin = 2')
+  rt2.1 = getResidualTree2(realizations, 2, 50, 1)
+  rt2.2 = getResidualTree2(realizations, 2, 50, 2)
+  rt2.3 = getResidualTree2(realizations, 2, 50, 3)
+  rt2.4 = getResidualTree2(realizations, 2, 50, 4)
+  
+  print('get results')
+  for (i in seq_along(flexible.costs)) {
+    rt2.results.high.f1.r = getTestResults(rt2.1, testingDataSet, rt2.node, high.cost.structure[[i]], mode=0)
+    rt2.results.high.f1.r = lapply(rt2.results.high.f1.r, sum)
+    
+    rt2.results.high.f2.r = getTestResults(rt2.2, testingDataSet, rt2.node, high.cost.structure[[i]], mode=0)
+    rt2.results.high.f2.r = lapply(rt2.results.high.f2.r, sum)
+    
+    rt2.results.high.f3.r = getTestResults(rt2.3, testingDataSet, rt2.node, high.cost.structure[[i]], mode=0)
+    rt2.results.high.f3.r = lapply(rt2.results.high.f3.r, sum)
+    
+    rt2.results.high.f4.r = getTestResults(rt2.4, testingDataSet, rt2.node, high.cost.structure[[i]], mode=0)
+    rt2.results.high.f4.r = lapply(rt2.results.high.f4.r, sum)
+    for (j in seq_along(rt2.results.high.f1.r)) {
+      rt2.results.high.f1[[i]][j] = rt2.results.high.f1[[i]][j] + rt2.results.high.f1.r[[j]]
+      rt2.results.high.f2[[i]][j] = rt2.results.high.f2[[i]][j] + rt2.results.high.f2.r[[j]]
+      rt2.results.high.f3[[i]][j] = rt2.results.high.f3[[i]][j] + rt2.results.high.f3.r[[j]]
+      rt2.results.high.f4[[i]][j] = rt2.results.high.f4[[i]][j] + rt2.results.high.f4.r[[j]]
+    }
+    
+    rt2.results.low.f1.r = getTestResults(rt2.1, testingDataSet, rt2.node, low.cost.structure[[i]], mode=0)
+    rt2.results.low.f1.r = lapply(rt2.results.low.f1.r, sum)
+    
+    rt2.results.low.f2.r = getTestResults(rt2.2, testingDataSet, rt2.node, low.cost.structure[[i]], mode=0)
+    rt2.results.low.f2.r = lapply(rt2.results.low.f2.r, sum)
+    
+    rt2.results.low.f3.r = getTestResults(rt2.3, testingDataSet, rt2.node, low.cost.structure[[i]], mode=0)
+    rt2.results.low.f3.r = lapply(rt2.results.low.f3.r, sum)
+    
+    rt2.results.low.f4.r = getTestResults(rt2.4, testingDataSet, rt2.node, low.cost.structure[[i]], mode=0)
+    rt2.results.low.f4.r = lapply(rt2.results.low.f4.r, sum)
+    for (j in seq_along(rt2.results.low.f1.r)) {
+      rt2.results.low.f1[[i]][j] = rt2.results.low.f1[[i]][j] + rt2.results.low.f1.r[[j]]
+      rt2.results.low.f2[[i]][j] = rt2.results.low.f2[[i]][j] + rt2.results.low.f2.r[[j]]
+      rt2.results.low.f3[[i]][j] = rt2.results.low.f3[[i]][j] + rt2.results.low.f3.r[[j]]
+      rt2.results.low.f4[[i]][j] = rt2.results.low.f4[[i]][j] + rt2.results.low.f4.r[[j]]
+    }
+  }
+  
+  if (round == rounds){
+    print('avearge results')
+    rt2.results.high.f1 = lapply(rt2.results.high.f1, function(x){x / rounds})
+    rt2.results.low.f1 = lapply(rt2.results.low.f1, function(x){x / rounds})
+    
+    rt2.results.high.f2 = lapply(rt2.results.high.f2, function(x){x / rounds})
+    rt2.results.low.f2 = lapply(rt2.results.low.f2, function(x){x / rounds})
+    
+    rt2.results.high.f3 = lapply(rt2.results.high.f3, function(x){x / rounds})
+    rt2.results.low.f3 = lapply(rt2.results.low.f3, function(x){x / rounds})
+    
+    rt2.results.high.f4 = lapply(rt2.results.high.f4, function(x){x / rounds})
+    rt2.results.low.f4 = lapply(rt2.results.low.f4, function(x){x / rounds})
+    
+    saveRDS(rt2.results.high.f1, 'results/rt2f1ResultsHigh.rds')
+    saveRDS(rt2.results.low.f1, 'results/rt2f1ResultsLow.rds')
+    
+    saveRDS(rt2.results.high.f2, 'results/rt2f2ResultsHigh.rds')
+    saveRDS(rt2.results.low.f2, 'results/rt2f2ResultsLow.rds')
+
+    saveRDS(rt2.results.high.f3, 'results/rt2f3ResultsHigh.rds')
+    saveRDS(rt2.results.low.f3, 'results/rt2f3ResultsLow.rds')
+    
+    saveRDS(rt2.results.high.f4, 'results/rt2f4ResultsHigh.rds')
+    saveRDS(rt2.results.low.f4, 'results/rt2f4ResultsLow.rds')
+  }   
+}
+
+# residual tree, bin = 4, feature = 1, 2, 3, 4
+rt4.results.high.f1 = rep(list(rep(0, 3)), 3)
+rt4.results.low.f1 = rep(list(rep(0, 3)), 3)
+rt4.results.high.f2 = rep(list(rep(0, 3)), 3)
+rt4.results.low.f2 = rep(list(rep(0, 3)), 3)
+rt4.results.high.f3 = rep(list(rep(0, 3)), 3)
+rt4.results.low.f3 = rep(list(rep(0, 3)), 3)
+rt4.results.high.f4 = rep(list(rep(0, 3)), 3)
+rt4.results.low.f4 = rep(list(rep(0, 3)), 3)
+for (round in 1:rounds) {
+  
+  print(paste0('---round ', round, '---'))
+  
+  print('get residual tree, bin = 4')
+  rt4.1 = getResidualTree2(realizations, 4, 50, 1)
+  rt4.2 = getResidualTree2(realizations, 4, 50, 2)
+  rt4.3 = getResidualTree2(realizations, 4, 50, 3)
+  rt4.4 = getResidualTree2(realizations, 4, 50, 4)
+  
+  print('get results')
+  for (i in seq_along(flexible.costs)) {
+    rt4.results.high.f1.r = getTestResults(rt4.1, testingDataSet, rt4.node, high.cost.structure[[i]], mode=0)
+    rt4.results.high.f1.r = lapply(rt4.results.high.f1.r, sum)
+    
+    rt4.results.high.f2.r = getTestResults(rt4.2, testingDataSet, rt4.node, high.cost.structure[[i]], mode=0)
+    rt4.results.high.f2.r = lapply(rt4.results.high.f2.r, sum)
+    
+    rt4.results.high.f3.r = getTestResults(rt4.3, testingDataSet, rt4.node, high.cost.structure[[i]], mode=0)
+    rt4.results.high.f3.r = lapply(rt4.results.high.f3.r, sum)
+    
+    rt4.results.high.f4.r = getTestResults(rt4.4, testingDataSet, rt4.node, high.cost.structure[[i]], mode=0)
+    rt4.results.high.f4.r = lapply(rt4.results.high.f4.r, sum)
+    for (j in seq_along(rt4.results.high.f1.r)) {
+      rt4.results.high.f1[[i]][j] = rt4.results.high.f1[[i]][j] + rt4.results.high.f1.r[[j]]
+      rt4.results.high.f2[[i]][j] = rt4.results.high.f2[[i]][j] + rt4.results.high.f2.r[[j]]
+      rt4.results.high.f3[[i]][j] = rt4.results.high.f3[[i]][j] + rt4.results.high.f3.r[[j]]
+      rt4.results.high.f4[[i]][j] = rt4.results.high.f4[[i]][j] + rt4.results.high.f4.r[[j]]
+    }
+    
+    rt4.results.low.f1.r = getTestResults(rt4.1, testingDataSet, rt4.node, low.cost.structure[[i]], mode=0)
+    rt4.results.low.f1.r = lapply(rt4.results.low.f1.r, sum)
+    
+    rt4.results.low.f2.r = getTestResults(rt4.2, testingDataSet, rt4.node, low.cost.structure[[i]], mode=0)
+    rt4.results.low.f2.r = lapply(rt4.results.low.f2.r, sum)
+    
+    rt4.results.low.f3.r = getTestResults(rt4.3, testingDataSet, rt4.node, low.cost.structure[[i]], mode=0)
+    rt4.results.low.f3.r = lapply(rt4.results.low.f3.r, sum)
+    
+    rt4.results.low.f4.r = getTestResults(rt4.4, testingDataSet, rt4.node, low.cost.structure[[i]], mode=0)
+    rt4.results.low.f4.r = lapply(rt4.results.low.f4.r, sum)
+    for (j in seq_along(rt4.results.low.f1.r)) {
+      rt4.results.low.f1[[i]][j] = rt4.results.low.f1[[i]][j] + rt4.results.low.f1.r[[j]]
+      rt4.results.low.f2[[i]][j] = rt4.results.low.f2[[i]][j] + rt4.results.low.f2.r[[j]]
+      rt4.results.low.f3[[i]][j] = rt4.results.low.f3[[i]][j] + rt4.results.low.f3.r[[j]]
+      rt4.results.low.f4[[i]][j] = rt4.results.low.f4[[i]][j] + rt4.results.low.f4.r[[j]]
+    }
+  }
+  
+  if (round == rounds){
+    print('avearge results')
+    rt4.results.high.f1 = lapply(rt4.results.high.f1, function(x){x / rounds})
+    rt4.results.low.f1 = lapply(rt4.results.low.f1, function(x){x / rounds})
+    
+    rt4.results.high.f2 = lapply(rt4.results.high.f2, function(x){x / rounds})
+    rt4.results.low.f2 = lapply(rt4.results.low.f2, function(x){x / rounds})
+    
+    rt4.results.high.f3 = lapply(rt4.results.high.f3, function(x){x / rounds})
+    rt4.results.low.f3 = lapply(rt4.results.low.f3, function(x){x / rounds})
+    
+    rt4.results.high.f4 = lapply(rt4.results.high.f4, function(x){x / rounds})
+    rt4.results.low.f4 = lapply(rt4.results.low.f4, function(x){x / rounds})
+    
+    saveRDS(rt4.results.high.f1, 'results/rt4f1ResultsHigh.rds')
+    saveRDS(rt4.results.low.f1, 'results/rt4f1ResultsLow.rds')
+    
+    saveRDS(rt4.results.high.f2, 'results/rt4f2ResultsHigh.rds')
+    saveRDS(rt4.results.low.f2, 'results/rt4f2ResultsLow.rds')
+    
+    saveRDS(rt4.results.high.f3, 'results/rt4f3ResultsHigh.rds')
+    saveRDS(rt4.results.low.f3, 'results/rt4f3ResultsLow.rds')
+    
+    saveRDS(rt4.results.high.f4, 'results/rt4f4ResultsHigh.rds')
+    saveRDS(rt4.results.low.f4, 'results/rt4f4ResultsLow.rds')
+  }   
+}
+
+# visualize the results
+# read the data
+st.results.high = readRDS('results/stResultsHigh.rds')
+st.results.low = readRDS('results/stResultsLow.rds')
+rt2.results.high = readRDS('results/rt2ResultsHigh.rds')
+rt2.results.low = readRDS('results/rt2ResultsLow.rds')
+rt4.results.high = readRDS('results/rt2ResultsHigh.rds')
+rt4.results.low = readRDS('results/rt2ResultsLow.rds')
+
+ratio.st.rt2.high = c()
+ratio.st.rt2.low = c()
+ratio.st.rt4.high = c()
+ratio.st.rt4.low = c()
+for (i in seq_along(flexible.costs)) {
+  ratio.st.rt2.high =c(ratio.st.rt2.high, (st.results.high[[i]][1] / rt2.results.high[[i]][1]))
+  ratio.st.rt2.low =c(ratio.st.rt2.low, (st.results.low[[i]][1] / rt2.results.low[[i]][1]))
+  
+  ratio.st.rt4.high =c(ratio.st.rt4.high, (st.results.high[[i]][1] / rt4.results.high[[i]][1]))
+  ratio.st.rt4.low =c(ratio.st.rt4.low, (st.results.low[[i]][1] / rt4.results.low[[i]][1]))
+}
+
+ratio.rt2.results.high.f1 = c()
+ratio.rt2.results.low.f1 = c()
+ratio.rt2.results.high.f2 = c()
+ratio.rt2.results.low.f2 = c()
+ratio.rt2.results.high.f3 = c()
+ratio.rt2.results.low.f3 = c()
+ratio.rt2.results.high.f4 = c()
+ratio.rt2.results.low.f4 = c()
+
+ratio.rt4.results.high.f1 = c()
+ratio.rt4.results.low.f1 = c()
+ratio.rt4.results.high.f2 = c()
+ratio.rt4.results.low.f2 = c()
+ratio.rt4.results.high.f3 = c()
+ratio.rt4.results.low.f3 = c()
+ratio.rt4.results.high.f4 = c()
+ratio.rt4.results.low.f4 = c()
+for (i in seq_along(flexible.costs)) {
+  ratio.rt2.results.high.f1 = c(ratio.rt2.results.high.f1, (st.results.high[[i]][1] / rt2.results.high.f1[[i]][1]))
+  ratio.rt2.results.low.f1 = c(ratio.rt2.results.low.f1, (st.results.low[[i]][1] / rt2.results.low.f1[[i]][1]))
+  
+  ratio.rt2.results.high.f2 = c(ratio.rt2.results.high.f2, (st.results.high[[i]][1] / rt2.results.high.f2[[i]][1]))
+  ratio.rt2.results.low.f2 = c(ratio.rt2.results.low.f2, (st.results.low[[i]][1] / rt2.results.low.f2[[i]][1]))
+  
+  ratio.rt2.results.high.f3 = c(ratio.rt2.results.high.f3, (st.results.high[[i]][1] / rt2.results.high.f3[[i]][1]))
+  ratio.rt2.results.low.f3 = c(ratio.rt2.results.low.f3, (st.results.low[[i]][1] / rt2.results.low.f3[[i]][1]))
+  
+  ratio.rt2.results.high.f4 = c(ratio.rt2.results.high.f4, (st.results.high[[i]][1] / rt2.results.high.f4[[i]][1]))
+  ratio.rt2.results.low.f4 = c(ratio.rt2.results.low.f4, (st.results.low[[i]][1] / rt2.results.low.f4[[i]][1]))
+  
+  ratio.rt4.results.high.f1 = c(ratio.rt4.results.high.f1, (st.results.high[[i]][1] / rt4.results.high.f1[[i]][1]))
+  ratio.rt4.results.low.f1 = c(ratio.rt4.results.low.f1, (st.results.low[[i]][1] / rt4.results.low.f1[[i]][1]))
+  
+  ratio.rt4.results.high.f2 = c(ratio.rt4.results.high.f2, (st.results.high[[i]][1] / rt4.results.high.f2[[i]][1]))
+  ratio.rt4.results.low.f2 = c(ratio.rt4.results.low.f2, (st.results.low[[i]][1] / rt4.results.low.f2[[i]][1]))
+  
+  ratio.rt4.results.high.f3 = c(ratio.rt4.results.high.f3, (st.results.high[[i]][1] / rt4.results.high.f3[[i]][1]))
+  ratio.rt4.results.low.f3 = c(ratio.rt4.results.low.f3, (st.results.low[[i]][1] / rt4.results.low.f3[[i]][1]))
+  
+  ratio.rt4.results.high.f4 = c(ratio.rt4.results.high.f4, (st.results.high[[i]][1] / rt4.results.high.f4[[i]][1]))
+  ratio.rt4.results.low.f4 = c(ratio.rt4.results.low.f4, (st.results.low[[i]][1] / rt4.results.low.f4[[i]][1]))
+}
+
+col = c('blue', 'green', 'orange', 'red', 'black')
+# bin=2
+png('graphs/R2FeaturesHigh.png')
+plot(1:length(flexible.costs), ratio.rt2.results.high.f1, type='b',lty=2, lwd=2, col='blue',
+     xlab='flexible cosst', ylab='cost ratio', xaxt='n', yaxt='n', ylim=c(0.5, 1.3), main='high penalty')
+axis(1, at=1:length(flexible.costs), labels=flexible.costs)
+axis(2, at=seq(0.5, 1.3, 0.05))
+legend('topright', legend=c('rt2.f1', 'rt2.f2', 'rt2.f3', 'rt2.f4', 'rt2.full'), col=col, text.col=col, lty=2, lwd=2, cex = 0.85)
+lines(1:length(flexible.costs), ratio.rt2.results.high.f2, type='b', lty=2, lwd=2, col='green')
+lines(1:length(flexible.costs), ratio.rt2.results.high.f3, type='b', lty=2, lwd=2, col='orange')
+lines(1:length(flexible.costs), ratio.rt2.results.high.f4, type='b', lty=2, lwd=2, col='red')
+lines(1:length(flexible.costs), ratio.st.rt2.high, type='b', lty=2, lwd=2, col='black')
+dev.off()
+
+png('graphs/R2FeaturesLow.png')
+plot(1:length(flexible.costs), ratio.rt2.results.low.f1, type='b',lty=2, lwd=2, col='blue',
+     xlab='flexible cosst', ylab='cost ratio', xaxt='n', yaxt='n', ylim=c(0.5, 1.3), main='low penalty')
+axis(1, at=1:length(flexible.costs), labels=flexible.costs)
+axis(2, at=seq(0.5, 1.3, 0.05))
+legend('topright', legend=c('rt2.f1', 'rt2.f2', 'rt2.f3', 'rt2.f4', 'rt2.full'), col=col, text.col=col, lty=2, lwd=2, cex = 0.85)
+lines(1:length(flexible.costs), ratio.rt2.results.low.f2, type='b', lty=2, lwd=2, col='green')
+lines(1:length(flexible.costs), ratio.rt2.results.low.f3, type='b', lty=2, lwd=2, col='orange')
+lines(1:length(flexible.costs), ratio.rt2.results.low.f4, type='b', lty=2, lwd=2, col='red')
+lines(1:length(flexible.costs), ratio.st.rt2.low, type='b', lty=2, lwd=2, col='black')
+dev.off()
+
+# bin=4
+png('graphs/R4FeaturesHigh.png')
+plot(1:length(flexible.costs), ratio.rt4.results.high.f1, type='b',lty=2, lwd=2, col='blue',
+     xlab='flexible cosst', ylab='cost ratio', xaxt='n', yaxt='n', ylim=c(0.5, 1.2), main='high penalty')
+axis(1, at=1:length(flexible.costs), labels=flexible.costs)
+axis(2, at=seq(0.5, 1.2, 0.05))
+legend('topright', legend=c('rt4.f1', 'rt4.f2', 'rt4.f3', 'rt4.f4', 'rt4.full'), col=col, text.col=col, lty=2, lwd=2, cex = 0.85)
+lines(1:length(flexible.costs), ratio.rt4.results.high.f2, type='b', lty=2, lwd=2, col='green')
+lines(1:length(flexible.costs), ratio.rt4.results.high.f3, type='b', lty=2, lwd=2, col='orange')
+lines(1:length(flexible.costs), ratio.rt4.results.high.f4, type='b', lty=2, lwd=2, col='red')
+lines(1:length(flexible.costs), ratio.st.rt4.high, type='b', lty=2, lwd=2, col='black')
+dev.off()
+
+png('graphs/R4FeaturesLow.png')
+plot(1:length(flexible.costs), ratio.rt4.results.low.f1, type='b',lty=2, lwd=2, col='blue',
+     xlab='flexible cosst', ylab='cost ratio', xaxt='n', yaxt='n', ylim=c(0.5, 1.3), main='low penalty')
+axis(1, at=1:length(flexible.costs), labels=flexible.costs)
+axis(2, at=seq(0.5, 1.3, 0.05))
+legend('topright', legend=c('rt2.f1', 'rt2.f2', 'rt2.f3', 'rt2.f4', 'rt4.full'), col=col, text.col=col, lty=2, lwd=2, cex = 0.85)
+lines(1:length(flexible.costs), ratio.rt4.results.low.f2, type='b', lty=2, lwd=2, col='green')
+lines(1:length(flexible.costs), ratio.rt4.results.low.f3, type='b', lty=2, lwd=2, col='orange')
+lines(1:length(flexible.costs), ratio.rt4.results.low.f4, type='b', lty=2, lwd=2, col='red')
+lines(1:length(flexible.costs), ratio.st.rt4.low, type='b', lty=2, lwd=2, col='black')
+dev.off()
+# ---- time testing ----
+system.time({testScenarioTree(st.node, realizations, testingDataSet, high.cost.structure[[1]])})
+system.time({testResisualTree(rt2.node, realizations, testingDataSet, high.cost.structure[[1]])}) 
