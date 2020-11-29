@@ -103,53 +103,6 @@ getEstimatedDemands = function(X0, similar.product.datas, time.period=4){
   
   return(new.product.demands)
 }
-# knowming  exactly what features to use for each period
-getEstimatedDemands2 = function(X0, similar.product.datas, time.period=4){
-  
-  new.product.demands = list()
-  
-  ## perform least-squares regression on available data on the n historical demands of similar products
-  # period 1
-  lm.1 = lm(similar.product.datas[, 1]~x1+x2+x3+x4, similar.product.datas)
-  estimated.d01 = predict(lm.1, X0) + lm.1$residual
-  estimated.d01[which(estimated.d01 < 0)] = 0
-  new.product.demands = append(new.product.demands, list(estimated.d01))
-  
-  # period 2
-  lm.2 = lm(similar.product.datas[, 2]~x1+x4+d1, similar.product.datas)
-  estimated.d02 = c()
-  for (d in estimated.d01){
-    X0.t = cbind(X0, d1=d)
-    estimated.d02 = c(estimated.d02, predict(lm.2, X0.t))
-  }
-  estimated.d02 = estimated.d02 + lm.2$residual
-  estimated.d02[which(estimated.d02 < 0)] = 0
-  new.product.demands = append(new.product.demands, list(estimated.d02))
-  
-  # period 3
-  lm.3 = lm(similar.product.datas[, 3]~d2, similar.product.datas)
-  estimated.d03 = c()
-  for (d in estimated.d02){
-    X0.t = cbind(X0, d2=d)
-    estimated.d03 = c(estimated.d03, predict(lm.3, X0.t))
-  }
-  estimated.d03 = estimated.d03 + lm.3$residual
-  estimated.d03[which(estimated.d03 < 0)] = 0
-  new.product.demands = append(new.product.demands, list(estimated.d03))
-  
-  # period 4
-  lm.4 = lm(similar.product.datas[, 4]~x4+d2+d3, similar.product.datas)
-  estimated.d04 = c()
-  for (i in seq_along(estimated.d03)){
-    X0.t = cbind(X0, d2=estimated.d02[i], d3=estimated.d03[i])
-    estimated.d04 = c(estimated.d04, predict(lm.4, X0.t))
-  }
-  estimated.d04 = estimated.d04 + lm.4$residual
-  estimated.d04[which(estimated.d04 < 0)] = 0
-  new.product.demands = append(new.product.demands, list(estimated.d04))
-  
-  return(new.product.demands)
-}
 binDemands = function(demands, bin.num, realization.size, mode='default', probs=c(0.05, 0.95), test=0){
   
   # if to winsorize the demands
@@ -184,16 +137,15 @@ binDemands = function(demands, bin.num, realization.size, mode='default', probs=
   
   return(list(values=binned.demands, probs=binned.demands.probs))
 }
-getResidualTree = function(realizations, bin.num, realization.size) {
+getResidualTree = function(realizations, bin.num, realization.size, mode='default', probs=c(0.05, 0.95), test=0) {
   
+  realization.size = length(demands[[1]])
   features.x0 = getFeatures()
   demands.x0 = getEstimatedDemands(features.x0, realizations$frame)
-  bin.Demands = binDemands(demands.x0, bin.num, realization.size)
+  bin.Demands = binDemands(demands.x0, bin.num, realization.size, mode=mode, probs=probs, test=test)
   
   demands = bin.Demands$values
   probabilities = bin.Demands$probs
-  
-  realization.size = length(demands[[1]])
   paths.df = data.frame()
   probs.df = data.frame()
   for (i in (1:(length(demands) - 1))) {
@@ -242,6 +194,7 @@ getResidualTree = function(realizations, bin.num, realization.size) {
   
   return(list(tree_values=tree_values, branch_probabilities=branch_probabilities))
 }
+
 
 getEstimatedDemands1 = function(X0, similar.product.datas, time.period=4){
   
@@ -367,6 +320,7 @@ getEstimatedDemands4 = function(X0, similar.product.datas, time.period=4){
   print(lm.4)
   return(new.product.demands)
 }
+# used to test the effect of choosing different features
 getResidualTree2 = function(realizations, bin.num, realization.size, mode=1) {
   
   features.x0 = getFeatures()
@@ -443,7 +397,10 @@ getResidualTree2 = function(realizations, bin.num, realization.size, mode=1) {
 realization.size = 50
 realizations = getRealizationR(realization.size)
 bin.num = 3
+set.seed(1)
 residualtree = getResidualTree(realizations, bin.num, realization.size)
+set.seed(1)
+residualtree2 = getResidualTree(realizations, bin.num, realization.size, mode='w', probs=c(0.01, 0.99))
 getResidualTree2(realizations, 2, realization.size, 1)
 
 features.x0 = getFeatures()

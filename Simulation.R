@@ -1,6 +1,6 @@
 # ---- packages ----
-# to bin the data
-library(rbin)
+# to winsorize the data
+library(DescTools)
 # solver
 library(Rglpk)
 
@@ -108,31 +108,33 @@ getEstimatedDemands = function(X0, similar.product.datas, time.period=4){
   
   return(new.product.demands)
 }
-binDemands = function(demands, bin.num, realization.size, test=0){
+binDemands = function(demands, bin.num, realization.size, mode='default', probs=c(0.05, 0.95), test=0){
+  
+  # if to winsorize the demands
+  if (mode == 'w'){
+    demands = lapply(demands, function(x){Winsorize(x, probs=probs)})
+  }
+  
+  # visulalize the bins if need
+  if (test){
+    x11(width=70,height=30)
+    par(mfrow=c(2,2))
+  }
   
   # bin demands into bin.num bins for each period
   binned.demands = list()
   binned.demands.probs = list()
   
-  # if (test){
-  #   x11(width=70,height=30)
-  #   par(mfrow=c(2,2))
-  # }
-  
   period = 1
-  for (d in demands){
-    demand.dt = data.frame(demand=d)
-    bin.groups = rbin_equal_length(demand.dt, demand, demand, bin.num)
-    breaks = bin.groups$lower_cut[1]
-    breaks = c(breaks, bin.groups$upper_cut)
-    bins = cut(d, breaks, right = F)
-    bins.median = tapply(d, bins, median)
+  for (demand in demands){
+    bins = cut(demand, bin.num)
+    bins.median = tapply(demand, bins, median)
     binned.demands = append(binned.demands, list(bins.median))
-    
-    bins.count = table(bins)
     binned.demands.probs = append(binned.demands.probs, list(as.vector(table(bins)) / realization.size))
+    
+    # visulalize the bins if need
     if (test){
-      barplot(bins.count, names.arg=lapply(bins.median, round), main=paste0('period', period)) 
+      barplot(table(bins), names.arg=lapply(bins.median, round), main=paste0('period', period)) 
       period = period + 1
     }
     
@@ -140,16 +142,15 @@ binDemands = function(demands, bin.num, realization.size, test=0){
   
   return(list(values=binned.demands, probs=binned.demands.probs))
 }
-getResidualTree = function(realizations, bin.num, realization.size) {
+getResidualTree = function(realizations, bin.num, realization.size, mode='default', probs=c(0.05, 0.95), test=0) {
   
+  realization.size = length(demands[[1]])
   features.x0 = getFeatures()
   demands.x0 = getEstimatedDemands(features.x0, realizations$frame)
-  bin.Demands = binDemands(demands.x0, bin.num, realization.size)
+  bin.Demands = binDemands(demands.x0, bin.num, realization.size, mode=mode, probs=probs, test=test)
   
   demands = bin.Demands$values
   probabilities = bin.Demands$probs
-  
-  realization.size = length(demands[[1]])
   paths.df = data.frame()
   probs.df = data.frame()
   for (i in (1:(length(demands) - 1))) {
