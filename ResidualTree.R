@@ -139,12 +139,12 @@ binDemands = function(demands, bin.num, realization.size, mode='default', probs=
 }
 getResidualTree = function(realizations, bin.num, realization.size, mode='default', probs=c(0.05, 0.95), test=0) {
   
-  realization.size = length(demands[[1]])
   features.x0 = getFeatures()
   demands.x0 = getEstimatedDemands(features.x0, realizations$frame)
   bin.Demands = binDemands(demands.x0, bin.num, realization.size, mode=mode, probs=probs, test=test)
   
   demands = bin.Demands$values
+  realization.size = length(demands[[1]])
   probabilities = bin.Demands$probs
   paths.df = data.frame()
   probs.df = data.frame()

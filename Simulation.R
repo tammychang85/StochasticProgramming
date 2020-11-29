@@ -144,12 +144,12 @@ binDemands = function(demands, bin.num, realization.size, mode='default', probs=
 }
 getResidualTree = function(realizations, bin.num, realization.size, mode='default', probs=c(0.05, 0.95), test=0) {
   
-  realization.size = length(demands[[1]])
   features.x0 = getFeatures()
   demands.x0 = getEstimatedDemands(features.x0, realizations$frame)
   bin.Demands = binDemands(demands.x0, bin.num, realization.size, mode=mode, probs=probs, test=test)
   
   demands = bin.Demands$values
+  realization.size = length(demands[[1]])
   probabilities = bin.Demands$probs
   paths.df = data.frame()
   probs.df = data.frame()
@@ -814,7 +814,7 @@ rt4.node = c(1, 4, 16, 64, 256)
 rt5.node = c(1, 5, 25, 125, 625)
 
 # start
-rounds = 15
+rounds = 30
 flexible.costs = c(1.5, 3, 6)
 high.cost.structure = rep(list(0), length(flexible.costs)) # cost structure with high peanlty
 low.cost.structure = rep(list(0), length(flexible.costs)) # cost structure with low peanlty
@@ -888,8 +888,8 @@ for (round in 1:rounds) {
     rt2.results.high = lapply(rt2.results.high, function(x){x / rounds})
     rt2.results.low = lapply(rt2.results.low, function(x){x / rounds})
     
-    saveRDS(rt2.results.high, 'results/rt2ResultsHigh15.rds')
-    saveRDS(rt2.results.low, 'results/rt2ResultsLow15.rds')
+    saveRDS(rt2.results.high, 'results/rt2ResultsHigh.rds')
+    saveRDS(rt2.results.low, 'results/rt2ResultsLow.rds')
   }   
 }
 
@@ -923,8 +923,8 @@ for (round in 1:rounds) {
     rt4.results.high = lapply(rt4.results.high, function(x){x / rounds})
     rt4.results.low = lapply(rt4.results.low, function(x){x / rounds})
     
-    saveRDS(rt4.results.high, 'results/rt4ResultsHigh15.rds')
-    saveRDS(rt4.results.low, 'results/rt4ResultsLow15.rds')
+    saveRDS(rt4.results.high, 'results/rt4ResultsHigh.rds')
+    saveRDS(rt4.results.low, 'results/rt4ResultsLow.rds')
   }   
 }
 
@@ -968,8 +968,8 @@ ratio.st.rt2.high = c()
 ratio.st.rt2.low = c()
 ratio.st.rt4.high = c()
 ratio.st.rt4.low = c()
-# ratio.st.rt5.high = c()
-# ratio.st.rt5.low = c()
+ratio.st.rt5.high = c()
+ratio.st.rt5.low = c()
 for (i in seq_along(flexible.costs)) {
   ratio.st.rt2.high =c(ratio.st.rt2.high, (st.results.high[[i]][1] / rt2.results.high[[i]][1]))
   ratio.st.rt2.low =c(ratio.st.rt2.low, (st.results.low[[i]][1] / rt2.results.low[[i]][1]))
@@ -977,8 +977,8 @@ for (i in seq_along(flexible.costs)) {
   ratio.st.rt4.high =c(ratio.st.rt4.high, (st.results.high[[i]][1] / rt4.results.high[[i]][1]))
   ratio.st.rt4.low =c(ratio.st.rt4.low, (st.results.low[[i]][1] / rt4.results.low[[i]][1]))
   
-  # ratio.st.rt5.high =c(ratio.st.rt5.high, (st.results.high[[i]][1] / rt5.results.high[[i]][1]))
-  # ratio.st.rt5.low =c(ratio.st.rt5.low, (st.results.low[[i]][1] / rt5.results.low[[i]][1]))
+  ratio.st.rt5.high =c(ratio.st.rt5.high, (st.results.high[[i]][1] / rt5.results.high[[i]][1]))
+  ratio.st.rt5.low =c(ratio.st.rt5.low, (st.results.low[[i]][1] / rt5.results.low[[i]][1]))
 }
 
 ratio.st.rt2.high = c()
